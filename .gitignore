@@ -1,0 +1,26 @@
+# 環境変数（絶対にコミットしない）
+.env
+.env.local
+.env*.local
+
+# 依存パッケージ
+node_modules/
+
+# Next.js ビルド成果物
+.next/
+out/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+.idea/

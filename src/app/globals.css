@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ── ダークモード（デフォルト） ── */
+  :root {
+    color-scheme: dark;
+    --bg:       #0a0e1a;
+    --surface:  #111827;
+    --surface2: #1a2234;
+    --border:   #2a3a52;
+    --text:     #e2e8f0;
+    --muted:    #7a90a8;
+    --accent:   #00c8ff;
+    --accent2:  #0080ff;
+    --ok:       #22c55e;
+    --warn:     #f59e0b;
+    --ng:       #ef4444;
+  }
+
+  /* ── ライトモード ── */
+  .light {
+    color-scheme: light;
+    --bg:       #f0f4f8;
+    --surface:  #ffffff;
+    --surface2: #e8edf3;
+    --border:   #c8d5e3;
+    --text:     #1a2234;
+    --muted:    #5a6e85;
+    --accent:   #0070b8;
+    --accent2:  #0050a0;
+    --ok:       #16a34a;
+    --warn:     #d97706;
+    --ng:       #dc2626;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    transition: background-color 0.2s, color 0.2s;
+  }
+}
+
+@layer components {
+  input[type='range'] {
+    @apply appearance-none h-1 rounded-full cursor-pointer outline-none w-full;
+    background: var(--border);
+  }
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  input[type='range']::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+}
