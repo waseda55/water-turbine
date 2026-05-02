@@ -270,7 +270,8 @@ export default function DashboardClient({ user, initialCalculations, initialProj
     const { data: { user: authUser } } = await supabase.auth.getUser()
     if (!authUser) { setSaving(false); return }
 
-    const { data, error } = await supabase.from('calculations').insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).from('calculations').insert({
       user_id:         authUser.id,
       project_id:      selectedProjectId || null,
       name:            saveName,
@@ -311,13 +312,18 @@ export default function DashboardClient({ user, initialCalculations, initialProj
 
   // 履歴から復元
   const loadHistory = async (id: string) => {
-    const { data } = await supabase.from('calculations').select('*').eq('id', id).single()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).from('calculations').select('*').eq('id', id).single()
     if (!data) return
     const restored: TurbineInputs = {
       head: data.head, flowRate: data.flow_rate,
       turbineEff: data.turbine_eff, generatorEff: data.generator_eff,
       suctionHead: data.suction_head, altitude: data.altitude,
       frequency: data.frequency as 50 | 60,
+      powerFactor: data.power_factor ?? 0.85,
+      operatingHours: data.operating_hours ?? 8000,
+      capacityFactor: data.capacity_factor ?? 70,
+      penstock: { length: data.penstock_length ?? 500, material: data.penstock_material ?? 'steel' },
     }
     setInputs(restored)
     setResults(calculate(restored))

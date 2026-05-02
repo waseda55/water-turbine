@@ -8,20 +8,20 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // 直近20件の計算履歴を取得
-  const { data: calculations } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+
+  const { data: calculations } = await sb
     .from('calculations')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(20)
 
-  // プロジェクト一覧
-  const { data: projects } = await supabase
+  const { data: projects } = await sb
     .from('projects')
     .select('*')
     .order('updated_at', { ascending: false })
 
-  // 選定図マスタデータ（DBから）
   const [hqRanges, nsRanges] = await Promise.all([
     fetchHQRanges(),
     fetchNsRanges(),

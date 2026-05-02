@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import type { HQRange, NsRange, TurbineTypeMaster } from '@/types'
+import type { HQRange, NsRange } from '@/types'
 
-/** H-Q 適用範囲をDBから取得 */
 export async function fetchHQRanges(): Promise<HQRange[]> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('hq_ranges')
     .select(`
       id, turbine_type_id, boundary_points,
@@ -17,6 +17,7 @@ export async function fetchHQRanges(): Promise<HQRange[]> {
 
   if (error || !data) return []
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((r: any) => ({
     id:             r.id,
     turbineTypeId:  r.turbine_type_id,
@@ -38,10 +39,10 @@ export async function fetchHQRanges(): Promise<HQRange[]> {
   }))
 }
 
-/** Ns 適用範囲をDBから取得 */
 export async function fetchNsRanges(): Promise<NsRange[]> {
   const supabase = createClient()
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('ns_ranges')
     .select(`
       id, turbine_type_id,
@@ -54,6 +55,7 @@ export async function fetchNsRanges(): Promise<NsRange[]> {
 
   if (error || !data) return []
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data.map((r: any) => ({
     id:             r.id,
     turbineTypeId:  r.turbine_type_id,
