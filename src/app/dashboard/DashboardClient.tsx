@@ -26,7 +26,29 @@ interface Props {
   nsRanges: NsRange[]
 }
 
-// ─── デフォルト入力 ────────────────────────────────────────────
+// ─── 流量単位変換 ──────────────────────────────────────────────
+type FlowUnit = 'm3/s' | 'l/s' | 'm3/min' | 'm3/h' | 'l/min' | 'l/h'
+
+const FLOW_UNITS: { key: FlowUnit; label: string; toM3s: number; dec: number; max: number; step: number }[] = [
+  { key: 'm3/s',   label: 'm³/s',   toM3s: 1,          dec: 3, max: 200,    step: 0.001 },
+  { key: 'l/s',    label: 'l/s',    toM3s: 0.001,      dec: 1, max: 200000, step: 0.1   },
+  { key: 'm3/min', label: 'm³/min', toM3s: 1/60,       dec: 2, max: 12000,  step: 0.01  },
+  { key: 'm3/h',   label: 'm³/h',   toM3s: 1/3600,     dec: 1, max: 720000, step: 0.1   },
+  { key: 'l/min',  label: 'l/min',  toM3s: 1/60000,    dec: 0, max: 12e6,   step: 1     },
+  { key: 'l/h',    label: 'l/h',    toM3s: 1/3600000,  dec: 0, max: 720e6,  step: 1     },
+]
+
+/** m³/s → 指定単位に変換 */
+function toDisplayFlow(m3s: number, unit: FlowUnit): number {
+  const u = FLOW_UNITS.find(u => u.key === unit)!
+  return m3s / u.toM3s
+}
+
+/** 指定単位 → m³/s に変換 */
+function toM3s(val: number, unit: FlowUnit): number {
+  const u = FLOW_UNITS.find(u => u.key === unit)!
+  return val * u.toM3s
+}
 const DEFAULT_INPUTS: TurbineInputs = {
   head: 50, flowRate: 5, turbineEff: 88, generatorEff: 96,
   suctionHead: 2, altitude: 0, frequency: 50,
@@ -55,8 +77,8 @@ function Badge({ result }: { result: string }) {
 // ══════════════════════════════════════════════════════════════
 // H-Q 選定図（SVG・対数スケール）
 // ══════════════════════════════════════════════════════════════
-function HQChart({ head, flowRate, turbineType, hqRanges }: {
-  head: number; flowRate: number; turbineType: string; hqRanges: HQRange[]
+function HQChart({ head, flowRate, turbineType, hqRanges, flowUnit }: {
+  head: number; flowRate: number; turbineType: string; hqRanges: HQRange[]; flowUnit: FlowUnit
 }) {
   const W = 560, H = 380
   const pad = { top: 20, right: 30, bottom: 50, left: 60 }
@@ -108,14 +130,14 @@ function HQChart({ head, flowRate, turbineType, hqRanges }: {
         <g>
           <circle cx={cx} cy={cy} r="10" fill="none" stroke="var(--accent)" strokeWidth="1.5" opacity="0.4" />
           <circle cx={cx} cy={cy} r="5"  fill="var(--accent)" stroke="#0a0e1a" strokeWidth="1.5" />
-          <text x={cx+10} y={cy-8} fill="var(--accent)" fontSize="11" fontWeight="bold">Q={flowRate} m³/s</text>
+          <text x={cx+10} y={cy-8} fill="var(--accent)" fontSize="11" fontWeight="bold">Q={toDisplayFlow(flowRate,flowUnit).toFixed(FLOW_UNITS.find(u=>u.key===flowUnit)!.dec)} {FLOW_UNITS.find(u=>u.key===flowUnit)!.label}</text>
           <text x={cx+10} y={cy+4} fill="var(--accent)" fontSize="11">H={head} m</text>
         </g>
       )}
       {qTicks.map(q => (
         <text key={q} x={toX(q)} y={pad.top+ch+16} textAnchor="middle" fill="var(--muted)" fontSize="10">{q}</text>
       ))}
-      <text x={pad.left+cw/2} y={H-4} textAnchor="middle" fill="var(--muted)" fontSize="11">設計流量 Q [m³/s]</text>
+      <text x={pad.left+cw/2} y={H-4} textAnchor="middle" fill="var(--muted)" fontSize="11">設計流量 Q [{FLOW_UNITS.find(u=>u.key===flowUnit)!.label}]　※軸はm³/s基準</text>
       {hTicks.map(h => (
         <text key={h} x={pad.left-8} y={toY(h)+4} textAnchor="end" fill="var(--muted)" fontSize="10">{h}</text>
       ))}
@@ -243,6 +265,7 @@ export default function DashboardClient({ user, initialCalculations, initialProj
   const [sidebarTab, setSidebarTab] = useState<'history' | 'projects'>('history')
   const [mainTab, setMainTab] = useState<'result' | 'hq' | 'ns'>('result')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [flowUnit, setFlowUnit] = useState<FlowUnit>('m3/s')
   const router = useRouter()
   const supabase = createClient()
 
@@ -368,7 +391,55 @@ export default function DashboardClient({ user, initialCalculations, initialProj
         <aside className="w-[340px] flex-shrink-0 bg-surface border-r border-border overflow-y-auto p-5">
           <p className="text-[10px] font-bold tracking-[0.15em] text-muted uppercase border-b border-border pb-2 mb-4">基本パラメータ</p>
           <SliderInput label="有効落差（H）"    id="H"     value={inputs.head}         min={2}   max={1000} step={1}   unit="m"    dec={0} onChange={set('head')} />
-          <SliderInput label="設計流量（Q）"    id="Q"     value={inputs.flowRate}      min={0.1} max={200}  step={0.1} unit="m³/s" dec={1} onChange={set('flowRate')} />
+
+          {/* 設計流量：単位セレクタ付き */}
+          {(() => {
+            const u = FLOW_UNITS.find(u => u.key === flowUnit)!
+            const displayVal = toDisplayFlow(inputs.flowRate, flowUnit)
+            return (
+              <div className="mb-4">
+                <div className="flex justify-between items-baseline mb-1.5">
+                  <span className="text-xs text-muted font-medium">設計流量（Q）</span>
+                  <select
+                    value={flowUnit}
+                    onChange={e => setFlowUnit(e.target.value as FlowUnit)}
+                    className="text-[11px] bg-surface2 border border-border rounded px-1.5 py-0.5 text-accent font-mono outline-none focus:border-accent cursor-pointer"
+                  >
+                    {FLOW_UNITS.map(u => (
+                      <option key={u.key} value={u.key}>{u.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range" min={0} max={u.max} step={u.step}
+                    value={displayVal}
+                    onChange={e => {
+                      const v = toM3s(parseFloat(e.target.value), flowUnit)
+                      update({ flowRate: Math.max(0.0001, v) })
+                    }}
+                    className="flex-1"
+                  />
+                  <input
+                    type="number" min={0} max={u.max} step={u.step}
+                    value={parseFloat(displayVal.toFixed(u.dec))}
+                    onChange={e => {
+                      const v = toM3s(parseFloat(e.target.value), flowUnit)
+                      if (!isNaN(v) && v > 0) update({ flowRate: v })
+                    }}
+                    className="w-[80px] flex-shrink-0 bg-surface2 border border-border rounded-md px-2 py-1 text-right text-[13px] font-mono text-accent font-bold outline-none focus:border-accent transition-colors"
+                  />
+                </div>
+                <div className="flex justify-between mt-0.5 pr-[88px]">
+                  <span className="text-[10px] text-muted">0 {u.label}</span>
+                  <span className="text-[10px] text-muted">{u.max.toLocaleString()} {u.label}</span>
+                </div>
+                <div className="text-[10px] text-muted mt-1 text-right">
+                  = {inputs.flowRate.toFixed(4)} m³/s
+                </div>
+              </div>
+            )
+          })()}
           <SliderInput label="水車効率（η_t）"  id="eta_t" value={inputs.turbineEff}    min={70}  max={95}   step={0.1} unit="%"    dec={1} onChange={set('turbineEff')} />
           <SliderInput label="発電機効率（η_g）"id="eta_g" value={inputs.generatorEff}  min={90}  max={99}   step={0.1} unit="%"    dec={1} onChange={set('generatorEff')} />
 
@@ -461,7 +532,7 @@ export default function DashboardClient({ user, initialCalculations, initialProj
               <div>
                 <div className="text-xl font-bold" style={{ color: typeColor }}>{results.turbineType}</div>
                 <div className="text-xs text-muted mt-0.5">
-                  H={inputs.head}m　Q={inputs.flowRate}m³/s　f={inputs.frequency}Hz　Ns={results.specificSpeed.toFixed(1)}
+                  H={inputs.head}m　Q={toDisplayFlow(inputs.flowRate, flowUnit).toFixed(FLOW_UNITS.find(u=>u.key===flowUnit)!.dec)} {FLOW_UNITS.find(u=>u.key===flowUnit)!.label}　f={inputs.frequency}Hz　Ns={results.specificSpeed.toFixed(1)}
                 </div>
               </div>
             </div>
@@ -674,7 +745,7 @@ export default function DashboardClient({ user, initialCalculations, initialProj
                 </div>
               </div>
 
-              <HQChart head={inputs.head} flowRate={inputs.flowRate} turbineType={results.turbineType} hqRanges={hqRanges} />
+              <HQChart head={inputs.head} flowRate={inputs.flowRate} turbineType={results.turbineType} hqRanges={hqRanges} flowUnit={flowUnit} />
 
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {hqRanges.map(r => {
